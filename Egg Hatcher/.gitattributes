@@ -1,0 +1,69 @@
+# ---------------------------------------------------------------------------
+# Git Attributes for Unity Projects
+# ---------------------------------------------------------------------------
+
+# Set default behavior to automatically handle line endings for text files
+* text=auto
+
+# Clear line endings specifically for Unity source code and text assets
+*.cs text eol=crlf
+*.json text eol=crlf
+*.xml text eol=crlf
+*.yaml text eol=crlf
+*.shader text eol=crlf
+*.cginc text eol=crlf
+*.hlsl text eol=crlf
+*.glsl text eol=crlf
+
+# Force Unity's internal YAML/text formats to use stable line endings
+*.meta text eol=crlf
+*.unity text eol=crlf
+*.asset text eol=crlf
+*.prefab text eol=crlf
+*.mat text eol=crlf
+*.anim text eol=crlf
+*.controller text eol=crlf
+*.overrideController text eol=crlf
+*.physicMaterial text eol=crlf
+*.physicsMaterial2D text eol=crlf
+*.playable text eol=crlf
+*.mask text eol=crlf
+*.terrainlayer text eol=crlf
+*.spriteatlas text eol=crlf
+
+# Explicitly treat 2D and 3D art assets as binary (Do NOT modify line endings)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tga binary
+*.psd binary
+*.tiff binary
+*.iff binary
+*.bmp binary
+*.exr binary
+*.fbx binary
+*.obj binary
+*.max binary
+*.blend binary
+*.dae binary
+*.3ds binary
+
+# Explicitly treat Audio, Video, and Fonts as binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.aif binary
+*.mov binary
+*.mp4 binary
+*.asf binary
+*.avi binary
+*.ttf binary
+*.otf binary
+*.fontsettings binary
+
+# Explicitly treat compiled code, builds, and system files as binary
+*.dll binary
+*.exe binary
+*.apk binary
+*.unitypackage binary
+*.assetbundle binary
