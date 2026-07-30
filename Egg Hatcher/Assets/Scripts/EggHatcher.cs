@@ -1,43 +1,61 @@
 using UnityEngine;
-using TMPro; // For TextMeshPro
-using UnityEngine.UI; // For Button
-using UnityEngine.InputSystem; // For new Input System
+using TMPro;
+using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 public class EggHatcher : MonoBehaviour
 {
-    public int eggsHatched = 0;                // Total eggs hatched (currency)
-    public int eggsPerClick = 1;                // Eggs gained per click
+    public int eggsHatched = 0; // internally still as eggsHatched, but represents taps now
+    public int eggsPerClick = 1; // tapsPerClick
+    public int autoHatchCount = 0;
 
-    public TMP_Text eggsText;                   // TMP Text to display eggs count
-    public Button hatchButton;                  // Button to hatch eggs
-    public Button autoHatchUpgradeButton;       // Button to buy auto hatch
-    public TMP_Text autoHatchCostText;          // TMP Text to display auto hatch cost
+    public TMP_Text eggsText;
+    public Button hatchButton;
+    public Button autoHatchUpgradeButton;
+    public TMP_Text autoHatchCostText;
 
-    public GameObject ripplePrefab;             // Ripple effect prefab
-    public Canvas uiCanvas;                     // Canvas for ripple positioning
+    public GameObject ripplePrefab;
+    public Canvas uiCanvas;
 
-    public AudioSource clickSound;              // AudioSource for click sound
+    public AudioSource clickSound;
 
-    private int autoHatchCost = 10;             // Initial cost for auto hatch
-    private int autoHatchCount = 0;             // Number of auto hatches bought
-    private float autoHatchInterval = 1f;       // Time between auto hatches
-    private float autoHatchTimer = 0f;          // Timer for auto hatching
+    public SaveManager saveManager;
+
+    public int autoHatchCost = 10; // Starting cost
+
+    private float autoHatchInterval = 1f;
+    private float autoHatchTimer = 0f;
+
+    // Reference to SettingsManager, assign in inspector
+    public SettingsManager settingsManager;
 
     void Start()
     {
-        UpdateUI();
+        if (saveManager != null)
+        {
+            saveManager.LoadGame(this);
+        }
 
-        // Add listeners to buttons
+        // Assign button callbacks
         if (hatchButton != null)
         {
             hatchButton.onClick.RemoveAllListeners();
-            hatchButton.onClick.AddListener(HatchEgg);
+            // When clicked, hatch 1 tap and update total taps
+            hatchButton.onClick.AddListener(() =>
+            {
+                HatchEgg(1, true);
+                if (settingsManager != null)
+                {
+                    settingsManager.AddTaps(eggsPerClick);
+                }
+            });
         }
         if (autoHatchUpgradeButton != null)
         {
             autoHatchUpgradeButton.onClick.RemoveAllListeners();
             autoHatchUpgradeButton.onClick.AddListener(BuyAutoHatch);
         }
+        UpdateUI();
     }
 
     void Update()
@@ -47,48 +65,42 @@ public class EggHatcher : MonoBehaviour
             autoHatchTimer += Time.deltaTime;
             if (autoHatchTimer >= autoHatchInterval)
             {
-                HatchEgg(autoHatchCount);
+                // Auto hatch with total taps from all auto hatcher
+                HatchEgg(autoHatchCount, false);
                 autoHatchTimer = 0f;
             }
         }
     }
 
-    // Method called when clicking the egg
-    public void HatchEgg()
+    public void HatchEgg(int count, bool isClick)
     {
-        Debug.Log("HatchEgg called");
-        eggsHatched += eggsPerClick;
+        eggsHatched += eggsPerClick * count; // taps count
         UpdateUI();
 
-        // Play click sound
         if (clickSound != null)
-        {
             clickSound.Play();
-        }
 
-        // Get mouse position using new Input System
-        Vector2 mousePosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
-
-        // Convert screen point to local point in the Canvas
-        Vector2 clickPos;
-        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                uiCanvas.transform as RectTransform,
-                mousePosition,
-                uiCanvas.worldCamera,
-                out clickPos))
+        if (isClick)
         {
-            // Convert local point to world position
-            Vector3 worldPos;
-            if (RectTransformUtility.ScreenPointToWorldPointInRectangle(
+            Vector2 mousePosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
                     uiCanvas.transform as RectTransform,
                     mousePosition,
                     uiCanvas.worldCamera,
-                    out worldPos))
+                    out Vector2 clickPos))
             {
-                if (ripplePrefab != null)
+                if (RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                        uiCanvas.transform as RectTransform,
+                        mousePosition,
+                        uiCanvas.worldCamera,
+                        out Vector3 worldPos))
                 {
-                    GameObject ripple = Instantiate(ripplePrefab, worldPos, Quaternion.identity, uiCanvas.transform);
-                    ripple.GetComponent<RippleEffect>().Play(worldPos);
+                    if (ripplePrefab != null)
+                    {
+                        GameObject ripple = Instantiate(ripplePrefab, worldPos, Quaternion.identity, uiCanvas.transform);
+                        ripple.GetComponent<RippleEffect>().Play(worldPos);
+                    }
                 }
             }
         }
@@ -100,22 +112,38 @@ public class EggHatcher : MonoBehaviour
         {
             eggsHatched -= autoHatchCost;
             autoHatchCount++;
-            autoHatchCost = Mathf.RoundToInt(autoHatchCost * 1.5f); // Increase cost each purchase
+            autoHatchCost = Mathf.RoundToInt(autoHatchCost * 1.5f);
             UpdateUI();
         }
     }
 
-    private void HatchEgg(int count)
+    public void SaveGame()
     {
-        eggsHatched += eggsPerClick * count;
+        if (saveManager != null)
+        {
+            saveManager.SaveGame(this);
+        }
+    }
+
+    public void UpdateUI()
+    {
+        if (eggsText != null)
+            eggsText.text = "Taps: " + eggsHatched;
+        if (autoHatchCostText != null)
+            autoHatchCostText.text = "Cost: " + autoHatchCost;
+    }
+
+    public void ResetGame()
+    {
+        eggsHatched = 0;
+        autoHatchCount = 0;
+        eggsPerClick = 1;
+        autoHatchCost = 10;
         UpdateUI();
     }
 
-    void UpdateUI()
+    void OnApplicationQuit()
     {
-        if (eggsText != null)
-            eggsText.text = "Eggs: " + eggsHatched;
-        if (autoHatchCostText != null)
-            autoHatchCostText.text = "Cost: " + autoHatchCost;
+        SaveGame();
     }
 }
