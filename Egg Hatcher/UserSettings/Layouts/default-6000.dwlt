@@ -262,7 +262,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 1
   m_Script: {fileID: 12006, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: SceneView
+  m_Name: GameView
   m_EditorClassIdentifier: 
   m_Children: []
   m_Position:
@@ -273,13 +273,13 @@ MonoBehaviour:
     height: 629
   m_MinSize: {x: 202, y: 226}
   m_MaxSize: {x: 4002, y: 4026}
-  m_ActualView: {fileID: 17}
+  m_ActualView: {fileID: 18}
   m_Panes:
   - {fileID: 17}
   - {fileID: 18}
   - {fileID: 12}
-  m_Selected: 0
-  m_LastSelected: 1
+  m_Selected: 1
+  m_LastSelected: 0
 --- !u!114 &12
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -579,17 +579,17 @@ MonoBehaviour:
       layout: 4
       size: {x: 0, y: 0}
       sizeOverridden: 0
-    - dockPosition: 2
+    - dockPosition: 1
       containerId: overlay-toolbar__top
       displayed: 1
       id: Play Mode Controls
-      index: 0
-      contents: '{"m_Layout":4,"m_Collapsed":false,"m_Folded":false,"m_Floating":false,"m_FloatingSnapOffset":{"x":0.0,"y":0.0},"m_SnapOffsetDelta":{"x":0.0,"y":0.0},"m_FloatingSnapCorner":0,"m_Size":{"x":0.0,"y":0.0},"m_SizeOverridden":false}'
+      index: 8
+      contents: '{"m_Layout":4,"m_Collapsed":false,"m_Folded":false,"m_Floating":false,"m_FloatingSnapOffset":{"x":-901.0,"y":-36.0},"m_SnapOffsetDelta":{"x":0.0,"y":0.0},"m_FloatingSnapCorner":3,"m_Size":{"x":0.0,"y":0.0},"m_SizeOverridden":false}'
       floating: 0
       collapsed: 0
-      snapOffset: {x: 0, y: 0}
+      snapOffset: {x: -901, y: -36}
       snapOffsetDelta: {x: 0, y: 0}
-      snapCorner: 0
+      snapCorner: 3
       layout: 4
       size: {x: 0, y: 0}
       sizeOverridden: 0
@@ -674,7 +674,7 @@ MonoBehaviour:
       m_Data: 49706
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 49640
+    - m_Data: 49646
     - m_Data: 1000000000
     - m_Data: 2147483647
     m_RenameOverlay:
@@ -735,8 +735,9 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
   m_ListAreaState:
-    m_SelectedInstanceIDs: []
-    m_LastClickedInstanceID: 0
+    m_SelectedInstanceIDs:
+    - m_Data: 50040
+    m_LastClickedInstanceID: 50040
     m_HadKeyboardFocusLastEvent: 1
     m_ExpandedInstanceIDs:
     - m_Data: 55060
@@ -747,8 +748,8 @@ MonoBehaviour:
     - m_Data: 52610
     m_RenameOverlay:
       m_UserAcceptedRename: 0
-      m_Name: 
-      m_OriginalName: 
+      m_Name: IntroVideoController
+      m_OriginalName: IntroVideoController
       m_EditFieldRect:
         serializedVersion: 2
         x: 0
@@ -756,10 +757,10 @@ MonoBehaviour:
         width: 0
         height: 0
       m_UserData:
-        m_Data: 0
+        m_Data: 50086
       m_IsWaitingForDelay: 0
       m_IsRenaming: 0
-      m_OriginalEventType: 11
+      m_OriginalEventType: 0
       m_IsRenamingFilename: 1
       m_TrimLeadingAndTrailingWhitespace: 0
       m_ClientGUIView: {fileID: 5}
@@ -866,22 +867,13 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: []
+      m_SelectedIDs:
+      - m_Data: 50040
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -15114
-      - m_Data: -8672
-      - m_Data: -8306
-      - m_Data: -7978
-      - m_Data: -7666
-      - m_Data: -7414
-      - m_Data: -7188
-      - m_Data: -6970
-      - m_Data: -6710
-      - m_Data: -6386
-      - m_Data: -6156
-      - m_Data: -5224
+      - m_Data: -9076
+      - m_Data: -2630
       - m_Data: -1312
       m_RenameOverlay:
         m_UserAcceptedRename: 0
@@ -929,8 +921,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Scene\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 274
-    y: 79
+    x: 275
+    y: 24
     width: 1112
     height: 603
   m_SerializedDataModeController:
@@ -1503,9 +1495,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 1230.1116, y: 682.92285, z: -1.5894752}
+    m_Target: {x: -0.54838324, y: 0.51679707, z: -10.003924}
     speed: 2
-    m_Value: {x: 1230.1116, y: 682.92285, z: -1.5894752}
+    m_Value: {x: -0.54838324, y: 0.51679707, z: -10.003924}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1555,9 +1547,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 940.6725
+    m_Target: 12.516788
     speed: 2
-    m_Value: 940.6725
+    m_Value: 12.516788
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -1662,7 +1654,7 @@ MonoBehaviour:
     m_HSlider: 0
     m_VSlider: 0
     m_IgnoreScrollWheelUntilClicked: 0
-    m_EnableMouseInput: 0
+    m_EnableMouseInput: 1
     m_EnableSliderZoomHorizontal: 0
     m_EnableSliderZoomVertical: 0
     m_UniformScale: 1
