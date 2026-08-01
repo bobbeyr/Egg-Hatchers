@@ -1,58 +1,163 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
+using UnityEngine.UI;
 using System.Collections;
+using UnityEngine.EventSystems;
 
 public class EggController : MonoBehaviour
 {
-    public Sprite initialSprite;          // The intact egg sprite
-    public Sprite brokenSprite;           // The broken egg sprite
-    public Sprite[] crackSprites;         // Visual crack sprites
-    public TextMeshProUGUI popupText;     // Assign in inspector
-    public AudioSource hatchSound;        // Assign in inspector for hatch sound
+    public Sprite initialSprite;
+    public Sprite brokenSprite;
+    public Sprite[] crackSprites;
+    public TextMeshProUGUI popupText;
+    public AudioSource hatchSound; // The shared audio engine component player
+    public Button eggButton;
+
+    [Header("Audio Clips Configuration")]
+    public AudioClip hatchCelebrationClip; // FIX: New explicit asset slot for the final hatch sound
+    public AudioClip[] crackSounds;
 
     private Image image;
-    private int crackCount = 0;            // current crack progress
-    private int cracksNeeded = 4;          // cracks needed before breaking
-    private bool isBroken = false;
+    private int totalTapsInCurrentCycle = 0;
+    private int cracksNeeded = 5;
+    private bool canClick = true;
+    private int lastPlayedStageIndex = -1;
+
+    public bool IsBroken { get; private set; } = false;
+
+    void Awake()
+    {
+        image = GetComponent<Image>();
+        if (image.sprite == null) image.sprite = initialSprite;
+    }
 
     void Start()
     {
-        image = GetComponent<Image>();
-        image.sprite = initialSprite; // start with initial sprite
         if (popupText != null)
-        {
             popupText.gameObject.SetActive(false);
-        }
+
+        if (eggButton != null)
+            eggButton.interactable = !IsBroken;
     }
 
-    public void OnEggTapped()
+    public int GetTotalTapsInCurrentCycle() => totalTapsInCurrentCycle;
+    public int GetCracksNeeded() => cracksNeeded;
+
+    public void LoadEggState(int savedTaps, int savedNeeded, bool savedIsBroken)
     {
-        if (!isBroken)
+        totalTapsInCurrentCycle = savedTaps;
+        cracksNeeded = savedNeeded;
+        IsBroken = savedIsBroken;
+        canClick = !savedIsBroken;
+
+        if (cracksNeeded > 0)
         {
-            crackCount++;
+            float progress = (float)totalTapsInCurrentCycle / cracksNeeded;
+            lastPlayedStageIndex = Mathf.FloorToInt(progress * crackSprites.Length);
+            lastPlayedStageIndex = Mathf.Clamp(lastPlayedStageIndex, -1, crackSprites.Length - 1);
+        }
 
-            // Optional: update crack sprite for visual cracking
-            if (crackSprites != null && crackSprites.Length > 0)
-            {
-                int spriteIndex = Mathf.Min(crackCount - 1, crackSprites.Length - 1);
-                image.sprite = crackSprites[spriteIndex];
-            }
+        if (image == null) image = GetComponent<Image>();
+        UpdateVisuals();
+    }
 
-            // When crackCount exceeds cracksNeeded, break the egg
-            if (crackCount > cracksNeeded)
+    private void UpdateVisuals()
+    {
+        if (IsBroken)
+        {
+            image.sprite = brokenSprite;
+            if (eggButton != null) eggButton.interactable = false;
+            return;
+        }
+
+        if (totalTapsInCurrentCycle == 0)
+        {
+            image.sprite = initialSprite;
+            if (eggButton != null) eggButton.interactable = true;
+            return;
+        }
+
+        float progress = (float)totalTapsInCurrentCycle / cracksNeeded;
+        int stageIndex = Mathf.FloorToInt(progress * crackSprites.Length);
+        stageIndex = Mathf.Clamp(stageIndex, 0, crackSprites.Length - 1);
+        image.sprite = crackSprites[stageIndex];
+        if (eggButton != null) eggButton.interactable = true;
+    }
+
+    public void HatchEgg()
+    {
+        if (!canClick || IsBroken) return;
+
+        totalTapsInCurrentCycle++;
+
+        if (totalTapsInCurrentCycle >= cracksNeeded)
+        {
+            canClick = false;
+            IsBroken = true;
+
+            if (eggButton != null)
             {
-                // Egg breaks
-                isBroken = true;
-                image.sprite = brokenSprite;
-                StartCoroutine(ShowHatchPopup());
+                eggButton.interactable = false;
+                if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject == eggButton.gameObject)
+                {
+                    EventSystem.current.SetSelectedGameObject(null);
+                }
             }
+        }
+
+        StartCoroutine(HatchRoutine());
+    }
+
+    // NEW: Simulates a single quick click from offline progress, returning true if it caused a hatch
+    public bool SimulateOfflineTap()
+    {
+        totalTapsInCurrentCycle++;
+
+        if (totalTapsInCurrentCycle >= cracksNeeded)
+        {
+            // Increase difficulty for the next cycle immediately
+            cracksNeeded = Mathf.CeilToInt(cracksNeeded * 1.5f);
+
+            // Reset counters for the next egg cycle
+            totalTapsInCurrentCycle = 0;
+            lastPlayedStageIndex = -1;
+
+            return true; // The egg successfully hatched!
+        }
+        return false; // Egg cracked, but didn't hatch yet
+    }
+
+
+    private IEnumerator HatchRoutine()
+    {
+        float progress = (float)totalTapsInCurrentCycle / cracksNeeded;
+
+        if (totalTapsInCurrentCycle >= cracksNeeded)
+        {
+            image.sprite = brokenSprite;
+            yield return StartCoroutine(ShowHatchPopup());
+
+            cracksNeeded = Mathf.CeilToInt(cracksNeeded * 1.5f);
+            ResetEgg();
         }
         else
         {
-            // Reset after hatch
-            ResetEgg();
-            IncreaseCracksNeeded();
+            int stageIndex = Mathf.FloorToInt(progress * crackSprites.Length);
+            stageIndex = Mathf.Clamp(stageIndex, 0, crackSprites.Length - 1);
+            image.sprite = crackSprites[stageIndex];
+
+            if (stageIndex != lastPlayedStageIndex)
+            {
+                if (crackSounds != null && crackSounds.Length > 0 && stageIndex < crackSounds.Length)
+                {
+                    if (hatchSound != null)
+                    {
+                        hatchSound.clip = crackSounds[stageIndex];
+                        hatchSound.Play();
+                    }
+                }
+                lastPlayedStageIndex = stageIndex;
+            }
         }
     }
 
@@ -64,39 +169,26 @@ public class EggController : MonoBehaviour
             popupText.gameObject.SetActive(true);
         }
 
-        // Play hatch sound if assigned
-        if (hatchSound != null)
+        // FIX: Force the clip engine to load the targeted hatch sound asset explicitly 
+        if (hatchSound != null && hatchCelebrationClip != null)
         {
+            hatchSound.clip = hatchCelebrationClip;
             hatchSound.Play();
         }
 
         yield return new WaitForSeconds(2f);
 
         if (popupText != null)
-        {
             popupText.gameObject.SetActive(false);
-        }
     }
 
-    void ResetEgg()
+    public void ResetEgg()
     {
-        crackCount = 0;
-        isBroken = false;
-        image.sprite = initialSprite; // reset to initial sprite
-    }
-
-    void IncreaseCracksNeeded()
-    {
-        // Increase the cracks needed for the next cycle to make cracking take longer
-        if (cracksNeeded == 4)
-            cracksNeeded = 10;
-        else if (cracksNeeded == 10)
-            cracksNeeded = 20;
-        else if (cracksNeeded == 20)
-            cracksNeeded = 50;
-        else if (cracksNeeded == 50)
-            cracksNeeded = 150;
-        else
-            cracksNeeded *= 3;
+        totalTapsInCurrentCycle = 0;
+        IsBroken = false;
+        lastPlayedStageIndex = -1;
+        image.sprite = initialSprite;
+        canClick = true;
+        if (eggButton != null) eggButton.interactable = true;
     }
 }

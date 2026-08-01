@@ -1,8 +1,8 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using System.IO;
+using UnityEngine.SceneManagement;
 
 public class SettingsManager : MonoBehaviour
 {
@@ -14,9 +14,9 @@ public class SettingsManager : MonoBehaviour
     public Button closeSettingsButton;
 
     [Header("Tab System Integration")]
-    public TabManager tabManager; // <-- NEW: Drag your TabManager GameObject here in the Inspector!
-    public GameObject homeTab;   // The top bar/container for tabs
-    public GameObject upgradeTab; // The top bar/container for tabs
+    public TabManager tabManager;
+    public GameObject homeTab;
+    public GameObject upgradeTab;
 
     [Header("Tab Buttons")]
     public Button homeTabButton;
@@ -39,7 +39,10 @@ public class SettingsManager : MonoBehaviour
     {
         totalTaps = PlayerPrefs.GetInt("TotalTaps", 0);
         ryanMode = PlayerPrefs.GetInt("RyanMode", 0) == 1;
-        ryanModeToggle.isOn = ryanMode;
+
+        if (ryanModeToggle != null)
+            ryanModeToggle.isOn = ryanMode;
+
         UpdateTotalTapsText();
         UpdateMusic();
 
@@ -56,33 +59,23 @@ public class SettingsManager : MonoBehaviour
     public void OpenSettings()
     {
         settingsPanel.SetActive(true);
-
-        // Hide the tabs and let TabManager turn off the current panel safely
         if (homeTab != null) homeTab.SetActive(false);
         if (upgradeTab != null) upgradeTab.SetActive(false);
         if (tabManager != null) tabManager.HideAllPanels();
-
-        // Disable UI interactions
         if (homeTabButton != null) homeTabButton.interactable = false;
         if (upgradeTabButton != null) upgradeTabButton.interactable = false;
         if (openSettingsButton != null) openSettingsButton.gameObject.SetActive(false);
+
+        UpdateTotalTapsText();
     }
 
     public void CloseSettings()
     {
         settingsPanel.SetActive(false);
-
-        // Show the main open button again
         if (openSettingsButton != null) openSettingsButton.gameObject.SetActive(true);
-
-        // Re-enable the tab background graphics
         if (homeTab != null) homeTab.SetActive(true);
         if (upgradeTab != null) upgradeTab.SetActive(true);
-
-        // FIX: Let TabManager cleanly restore the exact panel it left off on
         if (tabManager != null) tabManager.RestoreLastActivePanel();
-
-        // Re-enable tab buttons
         if (homeTabButton != null) homeTabButton.interactable = true;
         if (upgradeTabButton != null) upgradeTabButton.interactable = true;
     }
@@ -96,22 +89,21 @@ public class SettingsManager : MonoBehaviour
 
     private void UpdateMusic()
     {
-        if (ryanMode && ryanMusic != null) backgroundMusic.clip = ryanMusic;
-        else backgroundMusic.clip = normalMusic;
+        if (backgroundMusic == null) return;
 
-        if (backgroundMusic != null) backgroundMusic.Play();
+        if (ryanMode && ryanMusic != null)
+            backgroundMusic.clip = ryanMusic;
+        else
+            backgroundMusic.clip = normalMusic;
+
+        backgroundMusic.Play();
     }
 
-    public void AddTaps(int count)
+    public void UpdateTotalTapsText()
     {
-        totalTaps += count;
-        PlayerPrefs.SetInt("TotalTaps", totalTaps);
-        UpdateTotalTapsText();
-    }
-
-    private void UpdateTotalTapsText()
-    {
-        if (totalTapsText != null) totalTapsText.text = "Total Taps: " + totalTaps;
+        int manualTaps = PlayerPrefs.GetInt("TotalTaps", 0);
+        if (totalTapsText != null)
+            totalTapsText.text = "Total Taps: " + manualTaps;
     }
 
     public void ShowResetConfirmation()
@@ -123,6 +115,7 @@ public class SettingsManager : MonoBehaviour
     {
         Debug.Log("Resetting game...");
         PlayerPrefs.DeleteKey("TotalTaps");
+        PlayerPrefs.DeleteKey("EggsCurrency");
         PlayerPrefs.DeleteKey("EggHatched");
         PlayerPrefs.DeleteKey("AutoHatchCount");
         PlayerPrefs.Save();
