@@ -190,7 +190,7 @@ public class EggController : MonoBehaviour
         cracksNeeded = Mathf.CeilToInt(cracksNeeded * 1.5f);
         ResetEgg();
 
-        // Trigger the new visual roll whenever an egg fully cracks open!
+        // Trigger the new creature drop
         if (CreatureJournalManager.Instance != null)
         {
             Creature randomDrop = CreatureJournalManager.Instance.RollRandomCreature();
@@ -200,13 +200,23 @@ public class EggController : MonoBehaviour
 
     public bool SimulateOfflineTap()
     {
+        if (IsBroken) return false;
+
         totalTapsInCurrentCycle++;
+
         if (totalTapsInCurrentCycle >= cracksNeeded)
         {
-            FinishHatchAndReset();
-            return true;
+            // FIXED: Advance the crack threshold difficulty pool instantly
+            cracksNeeded = Mathf.CeilToInt(cracksNeeded * 1.5f);
+
+            // Reset local tap counters for the next egg shell cycle
+            totalTapsInCurrentCycle = 0;
+            lastPlayedStageIndex = -1;
+
+            return true; // Return true to notify EggHatcher that ONE hatch occurred
         }
-        return false;
+
+        return false; // Return false if the egg cracked but hasn't fully hatched yet
     }
 
     public void ResetEgg()

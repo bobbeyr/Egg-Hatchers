@@ -1,7 +1,6 @@
 using UnityEngine;
-using TMP_Text = TMPro.TMP_Text;
-using Toggle = UnityEngine.UI.Toggle;
-using Button = UnityEngine.UI.Button;
+using TMPro;
+using UnityEngine.UI;
 using System.IO;
 using UnityEngine.SceneManagement;
 
@@ -13,6 +12,13 @@ public class SettingsManager : MonoBehaviour
     public Button resetButton;
     public Button openSettingsButton;
     public Button closeSettingsButton;
+
+    [Header("Journal Integration")]
+    public Button openJournalButton;
+
+    [Header("Title Screen Integration")]
+    // REQUIRED: Drag your new BackToTitleButton here in the Inspector
+    public Button backToTitleButton;
 
     [Header("Tab System Integration")]
     public TabManager tabManager;
@@ -53,12 +59,16 @@ public class SettingsManager : MonoBehaviour
         if (confirmResetButton != null) confirmResetButton.onClick.AddListener(PerformReset);
         if (cancelResetButton != null) cancelResetButton.onClick.AddListener(CloseResetPopup);
 
+        // FIXED: Dynamically listen for the Back to Title Screen button click event
+        if (backToTitleButton != null) backToTitleButton.onClick.AddListener(ReturnToTitleScreen);
+
         if (resetPopupPanel != null) resetPopupPanel.SetActive(false);
     }
 
     public void OpenSettings()
     {
-        settingsPanel.SetActive(true);
+        if (settingsPanel != null) settingsPanel.SetActive(true);
+
         if (homeTab != null) homeTab.SetActive(false);
         if (upgradeTab != null) upgradeTab.SetActive(false);
         if (tabManager != null) tabManager.HideAllPanels();
@@ -68,23 +78,18 @@ public class SettingsManager : MonoBehaviour
         if (openSettingsButton != null) openSettingsButton.gameObject.SetActive(false);
 
         EggHatcher hatcher = Object.FindFirstObjectByType<EggHatcher>();
-        if (hatcher != null && hatcher.eggProgressBar != null)
-        {
-            hatcher.eggProgressBar.gameObject.SetActive(false);
-        }
-        if (hatcher != null && hatcher.eggController != null)
-        {
-            hatcher.eggController.gameObject.SetActive(false);
-        }
+        if (hatcher != null && hatcher.eggProgressBar != null) hatcher.eggProgressBar.gameObject.SetActive(false);
+        if (hatcher != null && hatcher.eggController != null) hatcher.eggController.gameObject.SetActive(false);
+        if (openJournalButton != null) openJournalButton.gameObject.SetActive(false);
 
         UpdateTotalTapsText();
     }
 
     public void CloseSettings()
     {
-        settingsPanel.SetActive(false);
-        if (openSettingsButton != null) openSettingsButton.gameObject.SetActive(true);
+        if (settingsPanel != null) settingsPanel.SetActive(false);
 
+        if (openSettingsButton != null) openSettingsButton.gameObject.SetActive(true);
         if (homeTabButton != null) homeTabButton.gameObject.SetActive(true);
         if (upgradeTabButton != null) upgradeTabButton.gameObject.SetActive(true);
 
@@ -99,14 +104,32 @@ public class SettingsManager : MonoBehaviour
         {
             if (homeTab != null) homeTab.SetActive(true);
             EggHatcher hatcher = Object.FindFirstObjectByType<EggHatcher>();
-            if (hatcher != null && hatcher.eggProgressBar != null)
-            {
-                hatcher.eggProgressBar.gameObject.SetActive(true);
-            }
-            if (hatcher != null && hatcher.eggController != null)
-            {
-                hatcher.eggController.gameObject.SetActive(true);
-            }
+            if (hatcher != null && hatcher.eggProgressBar != null) hatcher.eggProgressBar.gameObject.SetActive(true);
+            if (hatcher != null && hatcher.eggController != null) hatcher.eggController.gameObject.SetActive(true);
+            if (openJournalButton != null) openJournalButton.gameObject.SetActive(true);
+        }
+    }
+
+    // FIXED: Saves data, shuts off gameplay UI panels, and brings up the main Title Screen layout
+    public void ReturnToTitleScreen()
+    {
+        Debug.Log("[SETTINGS SYSTEM] Returning safely to main menu...");
+
+        // Force an immediate data autosave so players don't lose progress when backing out
+        EggHatcher hatcher = Object.FindFirstObjectByType<EggHatcher>();
+        if (hatcher != null)
+        {
+            hatcher.SaveGame();
+        }
+
+        // Hide the active settings frame panel
+        if (settingsPanel != null) settingsPanel.SetActive(false);
+
+        // Tell the Title Screen Manager to pull the main menu back up
+        EggClickerGame.TitleScreenManager titleScreen = Object.FindFirstObjectByType<EggClickerGame.TitleScreenManager>();
+        if (titleScreen != null)
+        {
+            titleScreen.ShowTitleMenuFromGameplay();
         }
     }
 
@@ -120,10 +143,8 @@ public class SettingsManager : MonoBehaviour
     private void UpdateMusic()
     {
         if (backgroundMusic == null) return;
-
         if (ryanMode && ryanMusic != null) backgroundMusic.clip = ryanMusic;
         else backgroundMusic.clip = normalMusic;
-
         backgroundMusic.Play();
     }
 
@@ -140,14 +161,16 @@ public class SettingsManager : MonoBehaviour
 
     public void PerformReset()
     {
-        Debug.Log("Resetting game data and wiping save files...");
+        Debug.Log("[SETTINGS] Resetting game variables selectively...");
 
+        // Core Currency Clearance
         PlayerPrefs.DeleteKey("TotalTaps");
         PlayerPrefs.DeleteKey("EggsCurrency");
         PlayerPrefs.DeleteKey("EggHatched");
         PlayerPrefs.DeleteKey("AutoHatchCount");
         PlayerPrefs.DeleteKey("AutoHatchInterval");
 
+        // Clean sweep across precise, separate shop keys
         PlayerPrefs.DeleteKey("Cost_TapStrength");
         PlayerPrefs.DeleteKey("Level_TapStrength");
         PlayerPrefs.DeleteKey("Cost_AutoHatcher");
@@ -155,10 +178,11 @@ public class SettingsManager : MonoBehaviour
         PlayerPrefs.DeleteKey("Cost_HatchSpeed");
         PlayerPrefs.DeleteKey("Level_HatchSpeed");
 
+        // Double-check spelling variants just in case
         PlayerPrefs.DeleteKey("Cost_Auto Hatcher");
         PlayerPrefs.DeleteKey("Level_Auto Hatcher");
 
-        // FIXED: Clear out running creature dictionaries so old stats don't stick around in memory
+        // FIXED: Removed PlayerPrefs.DeleteAll() to protect your creature log dictionary registers!
         if (EggClickerGame.CreatureJournalManager.Instance != null)
         {
             EggClickerGame.CreatureJournalManager.Instance.WipeCollection();
@@ -173,9 +197,11 @@ public class SettingsManager : MonoBehaviour
             Debug.Log("JSON Save file deleted successfully.");
         }
 
-        Debug.Log("Wipe complete. Reloading game environment...");
+        Debug.Log("Wipe complete. Reloading environment...");
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
+
+
 
     public void CloseResetPopup()
     {

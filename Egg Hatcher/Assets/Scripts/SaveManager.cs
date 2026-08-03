@@ -37,7 +37,6 @@ namespace EggClickerGame
                 autoHatchInterval = eggHatcher.autoHatchInterval
             };
 
-            // Dynamically scan storefront components
             UpgradeButton[] allButtons = Object.FindObjectsByType<UpgradeButton>(FindObjectsSortMode.None);
             foreach (UpgradeButton btn in allButtons)
             {
@@ -58,7 +57,6 @@ namespace EggClickerGame
                 }
             }
 
-            // Extract active progress histories
             if (CreatureJournalManager.Instance != null)
             {
                 data.journalCreatureIDs = CreatureJournalManager.Instance.GetSaveIDs();
@@ -88,7 +86,6 @@ namespace EggClickerGame
                     eggHatcher.eggController.LoadEggState(data.totalTapsInCurrentCycle, data.cracksNeeded, data.isBroken);
                 }
 
-                // Restore shop button level progression layouts
                 UpgradeButton[] allButtons = Object.FindObjectsByType<UpgradeButton>(FindObjectsSortMode.None);
                 foreach (UpgradeButton btn in allButtons)
                 {
@@ -117,7 +114,6 @@ namespace EggClickerGame
                 }
                 PlayerPrefs.Save();
 
-                // Direct lookup bridge injects loaded data parameters into the journal manager
                 if (CreatureJournalManager.Instance != null)
                 {
                     CreatureJournalManager.Instance.LoadFromSave(data.journalCreatureIDs, data.journalCreatureCounts);
@@ -157,7 +153,7 @@ namespace EggClickerGame
                 eggHatcher.eggsHatched = 0;
                 eggHatcher.autoHatchCount = 0;
                 eggHatcher.eggsPerClick = 1;
-                eggHatcher.autoHatchCost = 10;
+                eggHatcher.autoHatchCost = 50;
                 eggHatcher.autoHatchInterval = 5f;
 
                 if (eggHatcher.eggController != null)
@@ -179,6 +175,13 @@ namespace EggClickerGame
                 }
 
                 eggHatcher.UpdateUI();
+            }
+
+            // FIXED: This line notifies the Journal Manager that loading has finished, 
+            // safely releasing the initialization popup block!
+            if (CreatureJournalManager.Instance != null)
+            {
+                CreatureJournalManager.Instance.FinalizeInitializationLoad();
             }
         }
 
@@ -212,7 +215,6 @@ namespace EggClickerGame
         }
     }
 
-    // FIXED: Added the missing data structure class token back to the file context boundary
     [System.Serializable]
     public class TimeApiResponse
     {

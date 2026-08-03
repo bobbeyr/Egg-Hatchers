@@ -39,10 +39,21 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     void Start()
     {
         eggHatcher = Object.FindFirstObjectByType<EggHatcher>();
+        costSaveKey = "Cost_" + upgradeName.Replace(" ", "");
+        levelSaveKey = "Level_" + upgradeName.Replace(" ", "");
 
-        // Load initialization values from PlayerPrefs, defaulting to initial inspector values
         currentLevel = PlayerPrefs.GetInt(levelSaveKey, 0);
         currentCost = PlayerPrefs.GetInt(costSaveKey, initialCost);
+
+        // FIXED: Safety sync to prevent SaveManager's old JSON file variables 
+        // from dragging the core currency tracking engine down below the button's starting cost!
+        if (upgradeName == "Auto Hatcher" && eggHatcher != null)
+        {
+            if (eggHatcher.autoHatchCost < currentCost)
+            {
+                eggHatcher.autoHatchCost = currentCost;
+            }
+        }
 
         if (upgradeButton != null)
         {
@@ -51,6 +62,7 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         }
         UpdateButtonDisplay();
     }
+
 
     public void OnPointerEnter(PointerEventData eventData)
     {

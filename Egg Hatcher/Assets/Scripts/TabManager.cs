@@ -46,6 +46,9 @@ public class TabManager : MonoBehaviour
         SwitchToTab(lastActiveTabIndex);
     }
 
+
+
+    // Your provided method
     public void SwitchToTab(int targetIndex)
     {
         if (targetIndex < 0 || targetIndex >= allTabs.Length) return;
@@ -53,6 +56,7 @@ public class TabManager : MonoBehaviour
         lastActiveTabIndex = targetIndex;
 
         EggHatcher hatcher = Object.FindFirstObjectByType<EggHatcher>();
+        SettingsManager settings = Object.FindFirstObjectByType<SettingsManager>();
 
         for (int i = 0; i < allTabs.Length; i++)
         {
@@ -60,6 +64,7 @@ public class TabManager : MonoBehaviour
 
             if (allTabs[i].panelObject != null)
             {
+                // FIXED: This forces the panel containing the button to turn back on cleanly!
                 allTabs[i].panelObject.SetActive(shouldBeActive);
             }
 
@@ -69,16 +74,19 @@ public class TabManager : MonoBehaviour
             }
         }
 
-        // FIXED: Explicitly toggle the progress bar visibility based on the active tab page
         if (hatcher != null && hatcher.eggProgressBar != null)
         {
             hatcher.eggProgressBar.gameObject.SetActive(targetIndex == 0);
         }
 
-        // FIXED: Explicitly toggle the egg image visibility based on the active tab page
         if (hatcher != null && hatcher.eggController != null)
         {
             hatcher.eggController.gameObject.SetActive(targetIndex == 0);
+        }
+
+        if (settings != null && settings.openJournalButton != null)
+        {
+            settings.openJournalButton.gameObject.SetActive(targetIndex == 0);
         }
     }
 }

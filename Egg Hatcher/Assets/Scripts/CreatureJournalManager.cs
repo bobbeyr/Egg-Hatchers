@@ -26,11 +26,18 @@ namespace EggClickerGame
         public Button hatchPopupCloseButton;
 
         private Dictionary<string, int> ownedCreatures = new Dictionary<string, int>();
+        private Queue<Creature> offlineHatchQueue = new Queue<Creature>();
+
+        // FIXED: This state tracker flag blocks popups from opening while the game is reading your files
+        private bool isGameLoading = false;
 
         void Awake()
         {
             Instance = this;
+        }
 
+        void Start()
+        {
             if (openJournalButton != null)
             {
                 openJournalButton.onClick.RemoveAllListeners();
@@ -46,10 +53,7 @@ namespace EggClickerGame
                 hatchPopupCloseButton.onClick.RemoveAllListeners();
                 hatchPopupCloseButton.onClick.AddListener(CloseHatchPopup);
             }
-        }
 
-        void Start()
-        {
             if (journalPanel != null) journalPanel.SetActive(false);
             if (hatchPopupPanel != null) hatchPopupPanel.SetActive(false);
         }
@@ -59,25 +63,34 @@ namespace EggClickerGame
             Debug.Log("<color=cyan>[JOURNAL MANAGER]</color> OpenJournal Button Clicked!");
             if (journalPanel != null) journalPanel.SetActive(true);
 
-            // Hide core game UI elements
+            SettingsManager settings = Object.FindFirstObjectByType<SettingsManager>();
+            if (settings != null && settings.openJournalButton != null)
+            {
+                settings.openJournalButton.gameObject.SetActive(false);
+            }
+
             ToggleCoreGameUI(false);
-
-            // Populate journal grid
             PopulateJournalGrid();
-
-            // Force layout sync for debugging
             ForceCleanLayoutSync();
         }
 
         public void CloseJournal()
         {
             if (journalPanel != null) journalPanel.SetActive(false);
+
+            SettingsManager settings = Object.FindFirstObjectByType<SettingsManager>();
+            if (settings != null && settings.openJournalButton != null)
+            {
+                settings.openJournalButton.gameObject.SetActive(true);
+            }
+
             ToggleCoreGameUI(true);
         }
 
-        private void CloseHatchPopup()
+        public void CloseHatchPopup()
         {
             if (hatchPopupPanel != null) hatchPopupPanel.SetActive(false);
+            CheckHatchQueue();
         }
 
         private void ToggleCoreGameUI(bool show)
@@ -92,7 +105,7 @@ namespace EggClickerGame
 
         public Creature RollRandomCreature()
         {
-            if (allCreatures.Count == 0) return null;
+            if (allCreatures == null || allCreatures.Count == 0) return null;
             int totalWeight = 0;
             foreach (var creature in allCreatures) totalWeight += creature.rarityWeight;
             int randomValue = Random.Range(0, totalWeight);
@@ -108,32 +121,62 @@ namespace EggClickerGame
         public void AddCreatureToCollection(Creature creature)
         {
             if (creature == null) return;
+
             if (ownedCreatures.ContainsKey(creature.creatureID)) ownedCreatures[creature.creatureID]++;
             else ownedCreatures.Add(creature.creatureID, 1);
 
+            Debug.Log($"Hatched: {creature.creatureName}! Count: {ownedCreatures[creature.creatureID]}");
+
+            EggHatcher hatcher = Object.FindFirstObjectByType<EggHatcher>();
+            bool isOfflinePanelOpen = hatcher != null && hatcher.offlinePopupPanel != null && hatcher.offlinePopupPanel.activeSelf;
+
+            // FIXED: If the file system is currently loading OR the offline summary UI panel is visible,
+            // force the creature data card straight into the queue so it cannot overlap!
+            if (isGameLoading || isOfflinePanelOpen)
+            {
+                offlineHatchQueue.Enqueue(creature);
+                Debug.Log($"[QUEUE DETENTION] Cached load roll: '{creature.creatureName}' locked safely in queue.");
+                return;
+            }
+
+            // Otherwise, if the popup is already active on screen from active play, queue it up too
+            if (hatchPopupPanel != null && hatchPopupPanel.activeSelf)
+            {
+                offlineHatchQueue.Enqueue(creature);
+                return;
+            }
+
+            ShowHatchPopupVisuals(creature);
+        }
+
+        private void ShowHatchPopupVisuals(Creature creature)
+        {
             if (hatchPopupPanel != null && hatchPopupText != null && hatchPopupCreatureImage != null)
             {
                 hatchPopupText.text = $"You unlocked <color=yellow>{creature.creatureName}</color>!\nCheck the journal";
                 hatchPopupCreatureImage.sprite = creature.creatureSprite;
                 hatchPopupPanel.SetActive(true);
             }
-
             Object.FindFirstObjectByType<EggHatcher>()?.SaveGame();
+        }
+
+        public void CheckHatchQueue()
+        {
+            EggHatcher hatcher = Object.FindFirstObjectByType<EggHatcher>();
+            if (hatcher != null && hatcher.offlinePopupPanel != null && hatcher.offlinePopupPanel.activeSelf) return;
+
+            if (offlineHatchQueue.Count > 0)
+            {
+                Creature nextCreature = offlineHatchQueue.Dequeue();
+                ShowHatchPopupVisuals(nextCreature);
+            }
         }
 
         private void PopulateJournalGrid()
         {
-            if (gridContainer == null || journalSlotPrefab == null)
-            {
-                Debug.LogError("Journal Grid Container or Slot Prefab is unassigned in the Inspector!");
-                return;
-            }
+            if (gridContainer == null || journalSlotPrefab == null) return;
+            foreach (Transform child in gridContainer) Destroy(child.gameObject);
 
-            // Clear old slots
-            foreach (Transform child in gridContainer)
-                Destroy(child.gameObject);
-
-            // Instantiate new slots
             foreach (var creature in allCreatures)
             {
                 GameObject newSlot = Instantiate(journalSlotPrefab, gridContainer);
@@ -161,30 +204,8 @@ namespace EggClickerGame
                     }
                 }
             }
-            Debug.Log($"[DIAGNOSTIC] Successfully spawned {allCreatures.Count} creature blocks inside the container panel layout.");
         }
 
-        public List<string> GetSaveIDs() => new List<string>(ownedCreatures.Keys);
-        public List<int> GetSaveCounts() => new List<int>(ownedCreatures.Values);
-
-        public void LoadFromSave(List<string> ids, List<int> counts)
-        {
-            ownedCreatures.Clear();
-            if (ids == null || counts == null) return;
-            for (int i = 0; i < ids.Count; i++)
-            {
-                if (i < counts.Count) ownedCreatures.Add(ids[i], counts[i]);
-            }
-        }
-
-        public void WipeCollection()
-        {
-            ownedCreatures.Clear();
-        }
-
-        /// <summary>
-        /// Debug function: forces the layout to reset and aligns it properly.
-        /// </summary>
         private void ForceCleanLayoutSync()
         {
             if (gridContainer == null) return;
@@ -192,13 +213,10 @@ namespace EggClickerGame
             RectTransform gridRect = gridContainer.GetComponent<RectTransform>();
             if (gridRect != null)
             {
-                Debug.Log("<color=yellow>[VISUAL DEBUGGER]</color> Actively seizing Grid Container dimensions via code to fix positional drifting...");
-                gridRect.anchorMin = new Vector2(0.5f, 0.5f);
-                gridRect.anchorMax = new Vector2(0.5f, 0.5f);
-                gridRect.pivot = new Vector2(0.5f, 0.5f);
-                gridRect.anchoredPosition = Vector2.zero;
-                gridRect.localPosition = Vector3.zero;
-                gridRect.localScale = Vector3.one;
+                // FIXED: Changed from Vector3.one (1,1,1) to Vector3(0.5f, 0.5f, 1f) 
+                // to forcefully lock your desired 0.5 scale size choice directly through code!
+                gridRect.localScale = new Vector3(0.5f, 0.5f, 1f);
+
                 gridRect.SetAsLastSibling();
             }
 
@@ -206,8 +224,44 @@ namespace EggClickerGame
             {
                 child.gameObject.SetActive(true);
                 RectTransform childRect = child.GetComponent<RectTransform>();
+
+                // FIXED: Also lock the internal slot children to normal size scale boundaries
                 if (childRect != null) childRect.localScale = Vector3.one;
             }
+        }
+
+
+        public List<string> GetSaveIDs() => new List<string>(ownedCreatures.Keys);
+        public List<int> GetSaveCounts() => new List<int>(ownedCreatures.Values);
+
+        // FIXED: Activates our file safety tracker lock when reading the save structure
+        public void LoadFromSave(List<string> ids, List<int> counts)
+        {
+            isGameLoading = true;
+            ownedCreatures.Clear();
+            if (ids == null || counts == null)
+            {
+                isGameLoading = false;
+                return;
+            }
+            for (int i = 0; i < ids.Count; i++)
+            {
+                if (i < counts.Count) ownedCreatures.Add(ids[i], counts[i]);
+            }
+        }
+
+        // FIXED: Safely unlocks the popup system only after SaveManager has completely finished loading
+        public void FinalizeInitializationLoad()
+        {
+            isGameLoading = false;
+            Debug.Log("[LOAD SYSTEM] File reading completed. Safety lock released.");
+        }
+
+        public void WipeCollection()
+        {
+            ownedCreatures.Clear();
+            offlineHatchQueue.Clear();
+            isGameLoading = false;
         }
     }
 }
