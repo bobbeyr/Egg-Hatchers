@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 1037
   m_ShowMode: 4
-  m_Title: Game
+  m_Title: Scene
   m_RootView: {fileID: 6}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -69,8 +69,8 @@ MonoBehaviour:
     y: 0
     width: 533
     height: 981
-  m_MinSize: {x: 276, y: 76}
-  m_MaxSize: {x: 4001, y: 4026}
+  m_MinSize: {x: 275, y: 50}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 15}
   m_Panes:
   - {fileID: 15}
@@ -356,8 +356,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "UnityEditor.MainToolbarWindow\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 0
-    y: 43
+    x: -32000
+    y: -32000
     width: 1920
     height: 36
   m_SerializedDataModeController:
@@ -650,7 +650,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/MP3
+    - Assets/Scripts
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -660,7 +660,7 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 64
   m_LastFolders:
-  - Assets/MP3
+  - Assets/Scripts
   m_LastFoldersGridSize: -1
   m_LastProjectPath: C:\Users\chris\Desktop\SerumCo\Egg-Hatchers\Egg Hatcher
   m_LockTracker:
@@ -669,9 +669,9 @@ MonoBehaviour:
   m_FolderTreeState:
     scrollPos: {x: 0, y: 79}
     m_SelectedIDs:
-    - m_Data: 49762
+    - m_Data: 49770
     m_LastClickedID:
-      m_Data: 49762
+      m_Data: 49770
     m_ExpandedIDs:
     - m_Data: 0
     - m_Data: 49702
@@ -737,7 +737,7 @@ MonoBehaviour:
   m_ListAreaState:
     m_SelectedInstanceIDs: []
     m_LastClickedInstanceID: 0
-    m_HadKeyboardFocusLastEvent: 0
+    m_HadKeyboardFocusLastEvent: 1
     m_ExpandedInstanceIDs:
     - m_Data: 55060
     - m_Data: 54738
@@ -871,11 +871,38 @@ MonoBehaviour:
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
+      - m_Data: -131022
+      - m_Data: -122526
+      - m_Data: -120286
+      - m_Data: -102392
+      - m_Data: -101736
+      - m_Data: -88858
+      - m_Data: -88440
+      - m_Data: -87896
+      - m_Data: -65116
+      - m_Data: -50486
+      - m_Data: -50046
+      - m_Data: -47876
+      - m_Data: -14408
+      - m_Data: -13988
+      - m_Data: -6498
+      - m_Data: -2364
       - m_Data: -1312
+      - m_Data: 51248
+      - m_Data: 51300
+      - m_Data: 52022
+      - m_Data: 60398
+      - m_Data: 79980
+      - m_Data: 80150
+      - m_Data: 80354
+      - m_Data: 80916
+      - m_Data: 81290
+      - m_Data: 81852
+      - m_Data: 82226
       m_RenameOverlay:
         m_UserAcceptedRename: 0
-        m_Name: 
-        m_OriginalName: 
+        m_Name: GridGroupLayout
+        m_OriginalName: GridGroupLayout
         m_EditFieldRect:
           serializedVersion: 2
           x: 0
@@ -883,10 +910,10 @@ MonoBehaviour:
           width: 0
           height: 0
         m_UserData:
-          m_Data: 0
+          m_Data: -101736
         m_IsWaitingForDelay: 0
         m_IsRenaming: 0
-        m_OriginalEventType: 11
+        m_OriginalEventType: 0
         m_IsRenamingFilename: 0
         m_TrimLeadingAndTrailingWhitespace: 0
         m_ClientGUIView: {fileID: 4}
@@ -918,8 +945,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Scene\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 274
-    y: 79
+    x: -31726
+    y: -31964
     width: 1111
     height: 642
   m_SerializedDataModeController:
@@ -1492,9 +1519,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 1178.4891, y: 537.3468, z: -7.5195103}
+    m_Target: {x: 1231.0239, y: 863.16125, z: -6.4321237}
     speed: 2
-    m_Value: {x: 1178.4891, y: 537.3468, z: -7.5195103}
+    m_Value: {x: 1231.0239, y: 863.16125, z: -6.4321237}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1544,9 +1571,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 758.32904
+    m_Target: 858.21436
     speed: 2
-    m_Value: 758.32904
+    m_Value: 858.21436
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -1651,7 +1678,7 @@ MonoBehaviour:
     m_HSlider: 0
     m_VSlider: 0
     m_IgnoreScrollWheelUntilClicked: 0
-    m_EnableMouseInput: 0
+    m_EnableMouseInput: 1
     m_EnableSliderZoomHorizontal: 0
     m_EnableSliderZoomVertical: 0
     m_UniformScale: 1
