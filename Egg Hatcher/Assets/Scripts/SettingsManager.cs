@@ -17,7 +17,6 @@ public class SettingsManager : MonoBehaviour
     public Button openJournalButton;
 
     [Header("Title Screen Integration")]
-    // REQUIRED: Drag your new BackToTitleButton here in the Inspector
     public Button backToTitleButton;
 
     [Header("Tab System Integration")]
@@ -38,6 +37,8 @@ public class SettingsManager : MonoBehaviour
     public AudioSource backgroundMusic;
     public AudioClip normalMusic;
     public AudioClip ryanMusic;
+    public AudioClip openSettingsSound;
+    public AudioClip closeSettingsSound;
 
     private int totalTaps = 0;
     private bool ryanMode = false;
@@ -59,7 +60,6 @@ public class SettingsManager : MonoBehaviour
         if (confirmResetButton != null) confirmResetButton.onClick.AddListener(PerformReset);
         if (cancelResetButton != null) cancelResetButton.onClick.AddListener(CloseResetPopup);
 
-        // FIXED: Dynamically listen for the Back to Title Screen button click event
         if (backToTitleButton != null) backToTitleButton.onClick.AddListener(ReturnToTitleScreen);
 
         if (resetPopupPanel != null) resetPopupPanel.SetActive(false);
@@ -67,6 +67,10 @@ public class SettingsManager : MonoBehaviour
 
     public void OpenSettings()
     {
+        // Play open sound effect
+        if (backgroundMusic != null && openSettingsSound != null)
+            backgroundMusic.PlayOneShot(openSettingsSound);
+
         if (settingsPanel != null) settingsPanel.SetActive(true);
 
         if (homeTab != null) homeTab.SetActive(false);
@@ -87,6 +91,10 @@ public class SettingsManager : MonoBehaviour
 
     public void CloseSettings()
     {
+        // Play close sound effect
+        if (backgroundMusic != null && closeSettingsSound != null)
+            backgroundMusic.PlayOneShot(closeSettingsSound);
+
         if (settingsPanel != null) settingsPanel.SetActive(false);
 
         if (openSettingsButton != null) openSettingsButton.gameObject.SetActive(true);
@@ -110,22 +118,19 @@ public class SettingsManager : MonoBehaviour
         }
     }
 
-    // FIXED: Saves data, shuts off gameplay UI panels, and brings up the main Title Screen layout
+    // Existing method to return to title screen
     public void ReturnToTitleScreen()
     {
         Debug.Log("[SETTINGS SYSTEM] Returning safely to main menu...");
 
-        // Force an immediate data autosave so players don't lose progress when backing out
         EggHatcher hatcher = Object.FindFirstObjectByType<EggHatcher>();
         if (hatcher != null)
         {
             hatcher.SaveGame();
         }
 
-        // Hide the active settings frame panel
         if (settingsPanel != null) settingsPanel.SetActive(false);
 
-        // Tell the Title Screen Manager to pull the main menu back up
         EggClickerGame.TitleScreenManager titleScreen = Object.FindFirstObjectByType<EggClickerGame.TitleScreenManager>();
         if (titleScreen != null)
         {
@@ -163,26 +168,20 @@ public class SettingsManager : MonoBehaviour
     {
         Debug.Log("[SETTINGS] Resetting game variables selectively...");
 
-        // Core Currency Clearance
         PlayerPrefs.DeleteKey("TotalTaps");
         PlayerPrefs.DeleteKey("EggsCurrency");
         PlayerPrefs.DeleteKey("EggHatched");
         PlayerPrefs.DeleteKey("AutoHatchCount");
         PlayerPrefs.DeleteKey("AutoHatchInterval");
-
-        // Clean sweep across precise, separate shop keys
         PlayerPrefs.DeleteKey("Cost_TapStrength");
         PlayerPrefs.DeleteKey("Level_TapStrength");
         PlayerPrefs.DeleteKey("Cost_AutoHatcher");
         PlayerPrefs.DeleteKey("Level_AutoHatcher");
         PlayerPrefs.DeleteKey("Cost_HatchSpeed");
         PlayerPrefs.DeleteKey("Level_HatchSpeed");
-
-        // Double-check spelling variants just in case
         PlayerPrefs.DeleteKey("Cost_Auto Hatcher");
         PlayerPrefs.DeleteKey("Level_Auto Hatcher");
 
-        // FIXED: Removed PlayerPrefs.DeleteAll() to protect your creature log dictionary registers!
         if (EggClickerGame.CreatureJournalManager.Instance != null)
         {
             EggClickerGame.CreatureJournalManager.Instance.WipeCollection();
@@ -200,8 +199,6 @@ public class SettingsManager : MonoBehaviour
         Debug.Log("Wipe complete. Reloading environment...");
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
-
-
 
     public void CloseResetPopup()
     {

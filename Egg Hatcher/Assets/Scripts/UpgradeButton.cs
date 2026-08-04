@@ -3,13 +3,13 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
 
+[RequireComponent(typeof(AudioSource))]
 public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("Upgrade Parameters")]
     public string upgradeName = "Tap Strength";
     public int initialCost = 50;
     public float costMultiplier = 1.5f;
-
     [TextArea(2, 4)]
     public string description = "Increases your manual taps by 2% each time you buy it.";
 
@@ -21,9 +21,14 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     public Button upgradeButton;
     public TextMeshProUGUI buttonText;
 
+    [Header("Audio")]
+    [Tooltip("Drag your upgrade purchase sound effect here.")]
+    [SerializeField] private AudioClip purchaseSound;
+
+    private AudioSource audioSource;
+
     [HideInInspector] public int currentCost;
     [HideInInspector] public int currentLevel;
-
     private EggHatcher eggHatcher;
     private bool isHovering = false;
     private string costSaveKey;
@@ -31,7 +36,14 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
     void Awake()
     {
-        // Generate the save keys immediately during Awake so SaveManager can access them safely
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource != null)
+        {
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
+            audioSource.spatialBlend = 0f; // 2D Sound Layout
+        }
+
         costSaveKey = "Cost_" + upgradeName.Replace(" ", "");
         levelSaveKey = "Level_" + upgradeName.Replace(" ", "");
     }
@@ -39,14 +51,13 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     void Start()
     {
         eggHatcher = Object.FindFirstObjectByType<EggHatcher>();
+
         costSaveKey = "Cost_" + upgradeName.Replace(" ", "");
         levelSaveKey = "Level_" + upgradeName.Replace(" ", "");
 
         currentLevel = PlayerPrefs.GetInt(levelSaveKey, 0);
         currentCost = PlayerPrefs.GetInt(costSaveKey, initialCost);
 
-        // FIXED: Safety sync to prevent SaveManager's old JSON file variables 
-        // from dragging the core currency tracking engine down below the button's starting cost!
         if (upgradeName == "Auto Hatcher" && eggHatcher != null)
         {
             if (eggHatcher.autoHatchCost < currentCost)
@@ -57,12 +68,12 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
         if (upgradeButton != null)
         {
-            upgradeButton.onClick.RemoveAllListeners();
+            // FIXED: Removed RemoveAllListeners() so it stops breaking your ButtonSoundEffect script!
             upgradeButton.onClick.AddListener(BuyUpgrade);
         }
+
         UpdateButtonDisplay();
     }
-
 
     public void OnPointerEnter(PointerEventData eventData)
     {
@@ -82,23 +93,43 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     public void ShowFormattedTooltip()
     {
         if (UpgradeTooltipManager.Instance == null) return;
-
         string levelDisplay = (hasMaxLevel && currentLevel >= maxLevel) ? "Lvl. MAX" : $"Lvl. {currentLevel}";
         string formattedDescription = $"<color=#FFA500>[{levelDisplay}]</color>\n{description}";
-
         UpgradeTooltipManager.Instance.ShowTooltip(upgradeName, currentCost, formattedDescription);
     }
 
     public void BuyUpgrade()
     {
-        if (eggHatcher == null) return;
-        if (hasMaxLevel && currentLevel >= maxLevel) return;
+        Debug.Log($"[UpgradeButton] Clicked! {upgradeName} - Current Taps: {eggHatcher?.eggsHatched}, Cost: {currentCost}");
+
+        if (eggHatcher == null)
+        {
+            Debug.LogError("[UpgradeButton] CRITICAL: eggHatcher manager is missing/null in the scene!");
+            return;
+        }
+
+        if (hasMaxLevel && currentLevel >= maxLevel)
+        {
+            Debug.LogWarning($"[UpgradeButton] Purchase blocked: {upgradeName} is already at MAX level.");
+            return;
+        }
 
         if (eggHatcher.eggsHatched >= currentCost)
         {
+            Debug.Log($"[UpgradeButton] Currency check PASSED! Playing sound clip: {(purchaseSound != null ? purchaseSound.name : "NULL")}");
+
+            // Play purchase sound effect
+            if (eggHatcher != null && eggHatcher.clickSound != null && purchaseSound != null)
+            {
+                eggHatcher.clickSound.PlayOneShot(purchaseSound);
+            }
+            else
+            {
+                Debug.LogWarning($"[UpgradeButton] Sound skipped. AudioSource null: {eggHatcher.clickSound == null}, Clip null: {purchaseSound == null}");
+            }
+
             eggHatcher.eggsHatched -= currentCost;
             PlayerPrefs.SetInt("EggsCurrency", eggHatcher.eggsHatched);
-
             currentLevel++;
 
             if (upgradeName == "Tap Strength")
@@ -111,6 +142,9 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
                 eggHatcher.autoHatchCount++;
                 eggHatcher.autoHatchCost = Mathf.RoundToInt(eggHatcher.autoHatchCost * 2.5f);
                 currentCost = eggHatcher.autoHatchCost;
+
+                // FIX: Force the timer back to 0 so it doesn't hijack the audio thread!
+                eggHatcher.ResetAutoHatchTimer();
             }
             else if (upgradeName == "Hatch Speed")
             {
@@ -123,12 +157,11 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
                 PlayerPrefs.SetFloat("AutoHatchInterval", eggHatcher.autoHatchInterval);
             }
 
-            // Save variables to memory immediately
             PlayerPrefs.SetInt(costSaveKey, currentCost);
             PlayerPrefs.SetInt(levelSaveKey, currentLevel);
             PlayerPrefs.Save();
 
-            // CRUCIAL: Force instant UI face redraw
+            Debug.Log("[UpgradeButton] Saved data successfully. Updating display next...");
             UpdateButtonDisplay();
 
             if (isHovering)
@@ -137,6 +170,10 @@ public class UpgradeButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             }
 
             eggHatcher.UpdateUI();
+        }
+        else
+        {
+            Debug.LogWarning($"[UpgradeButton] Currency check FAILED. Player needs {currentCost - eggHatcher.eggsHatched} more taps.");
         }
     }
 

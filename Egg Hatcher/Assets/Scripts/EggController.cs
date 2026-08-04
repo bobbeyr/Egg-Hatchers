@@ -1,6 +1,6 @@
 using UnityEngine;
-using TMPro;
 using UnityEngine.UI;
+using TMPro;
 using System.Collections;
 using UnityEngine.EventSystems;
 using EggClickerGame;
@@ -32,6 +32,9 @@ public class EggController : MonoBehaviour
     private float resetTimer = 0f;
     private const float HatchPopupDuration = 2f;
 
+    // Additional auto hatch timer
+    private float autoHatchTimer = 0f;
+
     void Awake()
     {
         image = GetComponent<Image>();
@@ -55,6 +58,12 @@ public class EggController : MonoBehaviour
                 FinishHatchAndReset();
             }
         }
+    }
+
+    // Method to reset the autoHatchTimer
+    public void ResetAutoHatchTimer()
+    {
+        autoHatchTimer = 0f;
     }
 
     public int GetTotalTapsInCurrentCycle() => totalTapsInCurrentCycle;
@@ -206,17 +215,17 @@ public class EggController : MonoBehaviour
 
         if (totalTapsInCurrentCycle >= cracksNeeded)
         {
-            // FIXED: Advance the crack threshold difficulty pool instantly
+            // Fix for instant difficulty increase
             cracksNeeded = Mathf.CeilToInt(cracksNeeded * 1.5f);
 
-            // Reset local tap counters for the next egg shell cycle
+            // Reset local tap counters
             totalTapsInCurrentCycle = 0;
             lastPlayedStageIndex = -1;
 
-            return true; // Return true to notify EggHatcher that ONE hatch occurred
+            return true; // Egg cracked and hatched
         }
 
-        return false; // Return false if the egg cracked but hasn't fully hatched yet
+        return false; // Egg cracked but not hatched yet
     }
 
     public void ResetEgg()

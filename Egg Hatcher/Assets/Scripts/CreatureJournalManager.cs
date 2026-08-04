@@ -5,6 +5,17 @@ using System.Collections.Generic;
 
 namespace EggClickerGame
 {
+    // Restored enum for rarity categories
+    public enum CreatureRarity
+    {
+        Common,
+        Rare,
+        Epic,
+        Legendary,
+        Mythical,
+        Secret
+    }
+
     public class CreatureJournalManager : MonoBehaviour
     {
         public static CreatureJournalManager Instance { get; private set; }
@@ -17,7 +28,22 @@ namespace EggClickerGame
         public Button openJournalButton;
         public Button closeJournalButton;
         public Transform gridContainer;
+
+        [Header("Prefabs Configuration")]
         public GameObject journalSlotPrefab;
+        [Tooltip("Make sure this prefab has a Horizontal Layout Group set to Upper Center!")]
+        public GameObject rarityHeaderPrefab;
+
+        [Header("Grid Row Layout Tuning")]
+        [Tooltip("Set the exact pixel width and height for your item boxes.")]
+        public Vector2 cellSize = new Vector2(100f, 100f);
+        [Tooltip("The X (horizontal) and Y (vertical) gap spacing between item slots.")]
+        public Vector2 cellSpacing = new Vector2(15f, 15f);
+        [Tooltip("The left padding margin for shifting creature squares right.")]
+        public int creatureGridLeftPadding = 23; // Only one declaration
+
+        [Header("Dynamic Layout Settings")]
+        public int bannerLeftPadding = 60; // full span header padding
 
         [Header("Hatch Popup Window Layout")]
         public GameObject hatchPopupPanel;
@@ -27,9 +53,17 @@ namespace EggClickerGame
 
         private Dictionary<string, int> ownedCreatures = new Dictionary<string, int>();
         private Queue<Creature> offlineHatchQueue = new Queue<Creature>();
-
-        // FIXED: This state tracker flag blocks popups from opening while the game is reading your files
         private bool isGameLoading = false;
+
+        private readonly Dictionary<CreatureRarity, int> rarityWeights = new Dictionary<CreatureRarity, int>()
+        {
+            { CreatureRarity.Common, 100 },
+            { CreatureRarity.Rare, 80 },
+            { CreatureRarity.Epic, 60 },
+            { CreatureRarity.Legendary, 35 },
+            { CreatureRarity.Mythical, 10 },
+            { CreatureRarity.Secret, 1 }
+        };
 
         void Awake()
         {
@@ -53,21 +87,16 @@ namespace EggClickerGame
                 hatchPopupCloseButton.onClick.RemoveAllListeners();
                 hatchPopupCloseButton.onClick.AddListener(CloseHatchPopup);
             }
-
             if (journalPanel != null) journalPanel.SetActive(false);
             if (hatchPopupPanel != null) hatchPopupPanel.SetActive(false);
         }
 
         public void OpenJournal()
         {
-            Debug.Log("<color=cyan>[JOURNAL MANAGER]</color> OpenJournal Button Clicked!");
             if (journalPanel != null) journalPanel.SetActive(true);
-
             SettingsManager settings = Object.FindFirstObjectByType<SettingsManager>();
             if (settings != null && settings.openJournalButton != null)
-            {
                 settings.openJournalButton.gameObject.SetActive(false);
-            }
 
             ToggleCoreGameUI(false);
             PopulateJournalGrid();
@@ -77,13 +106,9 @@ namespace EggClickerGame
         public void CloseJournal()
         {
             if (journalPanel != null) journalPanel.SetActive(false);
-
             SettingsManager settings = Object.FindFirstObjectByType<SettingsManager>();
             if (settings != null && settings.openJournalButton != null)
-            {
                 settings.openJournalButton.gameObject.SetActive(true);
-            }
-
             ToggleCoreGameUI(true);
         }
 
@@ -106,40 +131,48 @@ namespace EggClickerGame
         public Creature RollRandomCreature()
         {
             if (allCreatures == null || allCreatures.Count == 0) return null;
+
             int totalWeight = 0;
-            foreach (var creature in allCreatures) totalWeight += creature.rarityWeight;
-            int randomValue = Random.Range(0, totalWeight);
-            int currentWeightSum = 0;
             foreach (var creature in allCreatures)
             {
-                currentWeightSum += creature.rarityWeight;
-                if (randomValue < currentWeightSum) return creature;
+                totalWeight += GetRarityWeight(creature.rarity);
+            }
+
+            int rand = Random.Range(0, totalWeight);
+            int sum = 0;
+            foreach (var creature in allCreatures)
+            {
+                sum += GetRarityWeight(creature.rarity);
+                if (rand < sum) return creature;
             }
             return allCreatures[0];
+        }
+
+        private int GetRarityWeight(CreatureRarity rarity)
+        {
+            if (rarityWeights.TryGetValue(rarity, out int weight))
+                return weight;
+            return 100;
         }
 
         public void AddCreatureToCollection(Creature creature)
         {
             if (creature == null) return;
 
-            if (ownedCreatures.ContainsKey(creature.creatureID)) ownedCreatures[creature.creatureID]++;
-            else ownedCreatures.Add(creature.creatureID, 1);
-
-            Debug.Log($"Hatched: {creature.creatureName}! Count: {ownedCreatures[creature.creatureID]}");
+            if (ownedCreatures.ContainsKey(creature.creatureID))
+                ownedCreatures[creature.creatureID]++;
+            else
+                ownedCreatures.Add(creature.creatureID, 1);
 
             EggHatcher hatcher = Object.FindFirstObjectByType<EggHatcher>();
             bool isOfflinePanelOpen = hatcher != null && hatcher.offlinePopupPanel != null && hatcher.offlinePopupPanel.activeSelf;
 
-            // FIXED: If the file system is currently loading OR the offline summary UI panel is visible,
-            // force the creature data card straight into the queue so it cannot overlap!
             if (isGameLoading || isOfflinePanelOpen)
             {
                 offlineHatchQueue.Enqueue(creature);
-                Debug.Log($"[QUEUE DETENTION] Cached load roll: '{creature.creatureName}' locked safely in queue.");
                 return;
             }
 
-            // Otherwise, if the popup is already active on screen from active play, queue it up too
             if (hatchPopupPanel != null && hatchPopupPanel.activeSelf)
             {
                 offlineHatchQueue.Enqueue(creature);
@@ -174,67 +207,126 @@ namespace EggClickerGame
 
         private void PopulateJournalGrid()
         {
-            if (gridContainer == null || journalSlotPrefab == null) return;
+            if (gridContainer == null || journalSlotPrefab == null || rarityHeaderPrefab == null) return;
+
+            // Clear previous content
             foreach (Transform child in gridContainer) Destroy(child.gameObject);
 
+            // Categorize creatures by rarity
+            Dictionary<CreatureRarity, List<Creature>> categorizedCreatures = new Dictionary<CreatureRarity, List<Creature>>();
+            foreach (CreatureRarity rarityType in System.Enum.GetValues(typeof(CreatureRarity)))
+            {
+                categorizedCreatures[rarityType] = new List<Creature>();
+            }
             foreach (var creature in allCreatures)
             {
-                GameObject newSlot = Instantiate(journalSlotPrefab, gridContainer);
-                Image creatureImg = newSlot.transform.Find("CreatureImage")?.GetComponent<Image>() ?? newSlot.GetComponentInChildren<Image>();
-                TMP_Text countTxt = newSlot.transform.Find("CountText")?.GetComponent<TMP_Text>() ?? newSlot.GetComponentInChildren<TMP_Text>();
+                categorizedCreatures[creature.rarity].Add(creature);
+            }
 
-                bool hasUnlocked = ownedCreatures.ContainsKey(creature.creatureID);
+            // Loop through each rarity category
+            foreach (CreatureRarity rarityType in System.Enum.GetValues(typeof(CreatureRarity)))
+            {
+                List<Creature> creaturesInThisTier = categorizedCreatures[rarityType];
+                if (creaturesInThisTier.Count == 0) continue;
 
-                if (creatureImg != null)
+                // 1. Instantiate header banner (full span, zero padding)
+                GameObject headerObj = Instantiate(rarityHeaderPrefab, gridContainer);
+                HorizontalLayoutGroup headerGroup = headerObj.GetComponent<HorizontalLayoutGroup>() ?? headerObj.AddComponent<HorizontalLayoutGroup>();
+                headerGroup.padding = new RectOffset(0, 0, 0, 0);
+                headerGroup.childControlWidth = true;
+                headerGroup.childForceExpandWidth = false;
+
+                TMP_Text headerTxt = headerObj.GetComponentInChildren<TMP_Text>();
+                if (headerTxt != null)
                 {
-                    creatureImg.sprite = creature.creatureSprite;
-                    creatureImg.color = hasUnlocked ? Color.white : Color.black;
+                    headerTxt.text = GetColoredRarityName(rarityType);
+                    headerTxt.alignment = TextAlignmentOptions.Center;
                 }
 
-                if (countTxt != null)
+                // 2. Create the creature grid row with configurable left padding
+                GameObject rowGo = new GameObject($"{rarityType}_GridRow", typeof(RectTransform));
+                rowGo.transform.SetParent(gridContainer, false);
+
+                GridLayoutGroup gridGroup = rowGo.AddComponent<GridLayoutGroup>();
+                gridGroup.padding = new RectOffset(this.creatureGridLeftPadding, 0, 0, 0);
+                gridGroup.cellSize = cellSize;
+                gridGroup.spacing = cellSpacing;
+                gridGroup.startCorner = GridLayoutGroup.Corner.UpperLeft;
+                gridGroup.startAxis = GridLayoutGroup.Axis.Horizontal;
+                gridGroup.childAlignment = TextAnchor.UpperLeft;
+
+                // Grow with content
+                ContentSizeFitter rowFitter = rowGo.AddComponent<ContentSizeFitter>();
+                rowFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                rowFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                // Populate creature slots
+                foreach (var creature in creaturesInThisTier)
                 {
-                    if (hasUnlocked && ownedCreatures[creature.creatureID] > 1)
+                    GameObject newSlot = Instantiate(journalSlotPrefab, rowGo.transform);
+                    Image creatureImg = newSlot.transform.Find("CreatureImage")?.GetComponent<Image>() ?? newSlot.GetComponentInChildren<Image>();
+                    TMP_Text countTxt = newSlot.transform.Find("CountText")?.GetComponent<TMP_Text>() ?? newSlot.GetComponentInChildren<TMP_Text>();
+
+                    bool hasUnlocked = ownedCreatures.ContainsKey(creature.creatureID);
+
+                    if (creatureImg != null)
                     {
-                        countTxt.text = ownedCreatures[creature.creatureID].ToString();
-                        countTxt.gameObject.SetActive(true);
+                        creatureImg.sprite = creature.creatureSprite;
+                        creatureImg.color = hasUnlocked ? Color.white : Color.black;
                     }
-                    else
+
+                    if (countTxt != null)
                     {
-                        countTxt.gameObject.SetActive(false);
+                        if (hasUnlocked && ownedCreatures[creature.creatureID] > 1)
+                        {
+                            countTxt.text = ownedCreatures[creature.creatureID].ToString();
+                            countTxt.gameObject.SetActive(true);
+                        }
+                        else
+                        {
+                            countTxt.gameObject.SetActive(false);
+                        }
                     }
                 }
+            }
+        }
+
+        private string GetColoredRarityName(CreatureRarity rarity)
+        {
+            switch (rarity)
+            {
+                case CreatureRarity.Common:
+                    return "<color=#A0A0A0>Common</color>";
+                case CreatureRarity.Epic:
+                    return "<color=#A335EE>Epic</color>";
+                case CreatureRarity.Rare:
+                    return "<color=#0070DD>Rare</color>";
+                case CreatureRarity.Legendary:
+                    return "<color=#FF8000>Legendary</color>";
+                case CreatureRarity.Mythical:
+                    return "<color=#FF0000>Mythical</color>";
+                case CreatureRarity.Secret:
+                    return "<color=#00FFCC>Secret</color>";
+                default:
+                    return rarity.ToString();
             }
         }
 
         private void ForceCleanLayoutSync()
         {
             if (gridContainer == null) return;
-
-            RectTransform gridRect = gridContainer.GetComponent<RectTransform>();
-            if (gridRect != null)
+            RectTransform rectTransform = gridContainer.GetComponent<RectTransform>();
+            if (rectTransform != null)
             {
-                // FIXED: Changed from Vector3.one (1,1,1) to Vector3(0.5f, 0.5f, 1f) 
-                // to forcefully lock your desired 0.5 scale size choice directly through code!
-                gridRect.localScale = new Vector3(0.5f, 0.5f, 1f);
-
-                gridRect.SetAsLastSibling();
-            }
-
-            foreach (Transform child in gridContainer)
-            {
-                child.gameObject.SetActive(true);
-                RectTransform childRect = child.GetComponent<RectTransform>();
-
-                // FIXED: Also lock the internal slot children to normal size scale boundaries
-                if (childRect != null) childRect.localScale = Vector3.one;
+                rectTransform.localScale = new Vector3(0.5f, 0.5f, 1f);
+                rectTransform.SetAsLastSibling();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
             }
         }
-
 
         public List<string> GetSaveIDs() => new List<string>(ownedCreatures.Keys);
         public List<int> GetSaveCounts() => new List<int>(ownedCreatures.Values);
 
-        // FIXED: Activates our file safety tracker lock when reading the save structure
         public void LoadFromSave(List<string> ids, List<int> counts)
         {
             isGameLoading = true;
@@ -246,11 +338,13 @@ namespace EggClickerGame
             }
             for (int i = 0; i < ids.Count; i++)
             {
-                if (i < counts.Count) ownedCreatures.Add(ids[i], counts[i]);
+                if (i < counts.Count)
+                {
+                    ownedCreatures.Add(ids[i], counts[i]);
+                }
             }
         }
 
-        // FIXED: Safely unlocks the popup system only after SaveManager has completely finished loading
         public void FinalizeInitializationLoad()
         {
             isGameLoading = false;

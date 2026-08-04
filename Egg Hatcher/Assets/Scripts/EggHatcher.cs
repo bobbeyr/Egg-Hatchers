@@ -25,14 +25,17 @@ public class EggHatcher : MonoBehaviour
 
     // Audio
     public AudioSource clickSound;
+    [Header("Upgrade Sound Effects")]
+    [Tooltip("Drag your upgrade purchase sound effect clip here.")]
+    public AudioClip buyUpgradeSound;
 
-    // Managers
+    // Managers & Components
     public SaveManager saveManager;
     public SettingsManager settingsManager;
     public EggController eggController;
 
     // Auto Hatcher Config
-    public int autoHatchCost = 50; // changed from 10 to 50
+    public int autoHatchCost = 50; // Changed from 10 to 50
     public float autoHatchInterval = 5f;
     private float autoHatchTimer = 0f;
 
@@ -42,10 +45,11 @@ public class EggHatcher : MonoBehaviour
     public TMP_Text offlinePopupText;
     public Button offlineCloseButton;
     public GameObject popupShadowMask;
+
     private CanvasGroup popupCanvasGroup;
     private CanvasGroup maskCanvasGroup;
 
-    // Tracker for offline progress hatches
+    // Offline Hatches Tracking
     private int offlineHatchesAwaitingPopup = 0;
 
     // Auto Save Timer
@@ -54,11 +58,11 @@ public class EggHatcher : MonoBehaviour
 
     void Start()
     {
-        // Load saved preferences
+        // Load saved data
         eggsHatched = PlayerPrefs.GetInt("EggsCurrency", 0);
         autoHatchInterval = PlayerPrefs.GetFloat("AutoHatchInterval", 5f);
 
-        // Set up CanvasGroups
+        // Setup CanvasGroups
         if (offlinePopupPanel != null)
         {
             popupCanvasGroup = offlinePopupPanel.GetComponent<CanvasGroup>() ?? offlinePopupPanel.AddComponent<CanvasGroup>();
@@ -68,19 +72,20 @@ public class EggHatcher : MonoBehaviour
             maskCanvasGroup = popupShadowMask.GetComponent<CanvasGroup>() ?? popupShadowMask.AddComponent<CanvasGroup>();
         }
 
-        // Set button listeners
+        // Button Listeners
         if (offlineCloseButton != null)
         {
             offlineCloseButton.onClick.RemoveAllListeners();
             offlineCloseButton.onClick.AddListener(OnCloseButtonClicked);
         }
-
-        // Note: Do NOT call saveManager.LoadGame(this); here, as per your instructions.
-
         if (hatchButton != null)
         {
             hatchButton.onClick.RemoveAllListeners();
             hatchButton.onClick.AddListener(OnEggClicked);
+        }
+        if (autoHatchUpgradeButton != null)
+        {
+            autoHatchUpgradeButton.onClick.AddListener(PlayUpgradeAudio);
         }
 
         UpdateUI();
@@ -88,7 +93,13 @@ public class EggHatcher : MonoBehaviour
 
     void Update()
     {
-        // Auto Hatching
+        HandleAutoHatching();
+        HandleAutoSave();
+        UpdateProgressBar();
+    }
+
+    private void HandleAutoHatching()
+    {
         if (autoHatchCount > 0 && eggController != null && !eggController.IsBroken)
         {
             autoHatchTimer += Time.deltaTime;
@@ -99,16 +110,24 @@ public class EggHatcher : MonoBehaviour
                 autoHatchTimer = 0f;
             }
         }
+    }
 
-        // Auto Save
+    private void HandleAutoSave()
+    {
         autoSaveTimer += Time.deltaTime;
         if (autoSaveTimer >= AutoSaveInterval)
         {
             SaveGame();
             autoSaveTimer = 0f;
         }
+    }
 
-        UpdateProgressBar();
+    private void PlayUpgradeAudio()
+    {
+        if (eggsHatched >= autoHatchCost && clickSound != null && buyUpgradeSound != null)
+        {
+            clickSound.PlayOneShot(buyUpgradeSound);
+        }
     }
 
     public void OnEggClicked()
@@ -117,7 +136,7 @@ public class EggHatcher : MonoBehaviour
         {
             eggController.HatchEgg();
 
-            // Ripple effect
+            // Ripple Effect
             if (ripplePrefab != null && uiCanvas != null)
             {
                 Vector2 mousePosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
@@ -128,6 +147,7 @@ public class EggHatcher : MonoBehaviour
                     ripple.GetComponent<RippleEffect>().Play(worldPos);
                 }
             }
+
             AddManualPlayerTaps(eggsPerClick);
         }
     }
@@ -139,7 +159,9 @@ public class EggHatcher : MonoBehaviour
         PlayerPrefs.SetInt("TotalTaps", PlayerPrefs.GetInt("TotalTaps", 0) + amount);
         PlayerPrefs.Save();
         UpdateUI();
-        if (settingsManager != null) settingsManager.UpdateTotalTapsText();
+
+        if (settingsManager != null)
+            settingsManager.UpdateTotalTapsText();
     }
 
     public void AddAutoTaps(int amount)
@@ -155,7 +177,6 @@ public class EggHatcher : MonoBehaviour
         eggsHatched += totalOfflineTaps;
         PlayerPrefs.SetInt("EggsCurrency", eggsHatched);
         PlayerPrefs.Save();
-
         offlineHatchesAwaitingPopup = 0;
 
         if (eggController != null)
@@ -208,21 +229,27 @@ public class EggHatcher : MonoBehaviour
                 if (maskCanvasGroup != null) maskCanvasGroup.alpha = 0f;
                 popupShadowMask.SetActive(true);
             }
+
             offlinePopupPanel.SetActive(true);
 
             float duration = 0.5f;
             float elapsed = 0f;
+
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
+
                 if (popupCanvasGroup != null) popupCanvasGroup.alpha = Mathf.Clamp01(t * 1.5f);
                 if (maskCanvasGroup != null) maskCanvasGroup.alpha = Mathf.Clamp01(t);
+
                 float scaleMultiplier = Mathf.Sin(t * Mathf.PI * 0.75f) * 1.08f;
                 if (t > 0.65f) scaleMultiplier = Mathf.Lerp(scaleMultiplier, 1f, (t - 0.65f) / 0.35f);
+
                 transform.localScale = new Vector3(scaleMultiplier, scaleMultiplier, scaleMultiplier);
                 yield return null;
             }
+
             transform.localScale = Vector3.one;
             if (popupCanvasGroup != null) popupCanvasGroup.alpha = 1f;
             if (maskCanvasGroup != null) maskCanvasGroup.alpha = 1f;
@@ -238,6 +265,7 @@ public class EggHatcher : MonoBehaviour
             Vector3 targetScale = new Vector3(0.85f, 0.85f, 0.85f);
             float duration = 0.12f;
             float elapsed = 0f;
+
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
@@ -246,6 +274,7 @@ public class EggHatcher : MonoBehaviour
             }
             t.localScale = targetScale;
             elapsed = 0f;
+
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
@@ -257,6 +286,7 @@ public class EggHatcher : MonoBehaviour
 
         float fadeOutDuration = 0.2f;
         float fadeElapsed = 0f;
+
         while (fadeElapsed < fadeOutDuration)
         {
             fadeElapsed += Time.deltaTime;
@@ -311,12 +341,14 @@ public class EggHatcher : MonoBehaviour
 
     public void ResetGame()
     {
+        // Reset egg data
         eggsHatched = 0;
         autoHatchCount = 0;
         eggsPerClick = 1;
-        autoHatchCost = 50; // updated from 10 to 50
+        autoHatchCost = 50; // Reset to default
         autoHatchInterval = 5f;
 
+        // Save resets
         PlayerPrefs.SetInt("EggsCurrency", 0);
         PlayerPrefs.SetInt("TotalTaps", 0);
         PlayerPrefs.DeleteKey("Cost_TapStrength");
@@ -328,11 +360,9 @@ public class EggHatcher : MonoBehaviour
         PlayerPrefs.DeleteKey("AutoHatchInterval");
         PlayerPrefs.Save();
 
-        UpdateUI();
-
-        // Reset upgrades
-        UpgradeButton[] allButtons = Object.FindObjectsByType<UpgradeButton>(FindObjectsSortMode.None);
-        foreach (UpgradeButton btn in allButtons)
+        // Reset upgrades UI
+        var allButtons = Object.FindObjectsOfType<UpgradeButton>();
+        foreach (var btn in allButtons)
         {
             btn.currentCost = btn.initialCost;
             btn.currentLevel = 0;
@@ -356,5 +386,11 @@ public class EggHatcher : MonoBehaviour
     void OnApplicationQuit()
     {
         SaveGame();
+    }
+
+    // Ensure this is outside of any other functions, but inside the class brackets
+    public void ResetAutoHatchTimer()
+    {
+        autoHatchTimer = 0f;
     }
 }
